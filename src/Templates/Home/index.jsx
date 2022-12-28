@@ -1,69 +1,57 @@
-import { Component } from 'react';
+import { useState } from 'react';
+import { useCallback } from 'react';
+import { useEffect } from 'react';
 import { Button } from '../../Components/Button';
 import { InputText } from '../../Components/InputText';
 import { Posts } from '../../Components/Posts';
 import { loadPost } from '../../Utils/load-post';
 import './styles.css';
 
-export default class Home extends Component{
-  state = {
-    posts: [],
-    allPosts:[],
-    pg:0,
-    ptsperpg: 10,
-    searchValue: ''
-  }
+const Home = () =>{
+  
+  const [posts, setPosts] = useState([]);
+  const [allPosts, setAllPosts] = useState([]);
+  const [page, setPage] = useState(0);
+  const [postsPerPage] = useState(2);
+  const [searchValue, setSearchValue] = useState('');
 
-  componentDidMount(){
-    //executa apenas uma vez o conteudo, useEffect ancestral
-    this.loadPosts()
-  }
-  componentDidUpdate(){
-    //executa toda vez q o conteudo é atualizado
-  }
-  loadPosts = async () =>{
-    const {pg, ptsperpg} = this.state
+  const loadPosts = useCallback(async (page, postPerPage) =>{
     const postAndPhotos = await loadPost()
-    this.setState({
-      posts: postAndPhotos.slice(pg, ptsperpg) ,
-      allPosts: postAndPhotos
-    
-    })
-  }
-  loadMorePost = () =>{
-    const {
-      posts,
-      allPosts,
-      pg,
-      ptsperpg
-    } = this.state
-    const nextpg = pg + ptsperpg
-    const nextsposts = allPosts.slice(nextpg, nextpg + ptsperpg)
+    setPosts(postAndPhotos.slice(page, postPerPage))
+    setAllPosts(postAndPhotos)
+  }, [])
+  const loadMorePost = () =>{
+    const nextpg = page + postsPerPage
+    const nextsposts = allPosts.slice(nextpg, nextpg + postsPerPage)
     posts.push(...nextsposts)
-    this.setState({posts, pg:nextpg})
+    setPage(nextpg)
   }
-  handleChange = (e) =>{
+  useEffect(() =>{
+    loadPosts(0, postsPerPage)
+  },[loadPosts, postsPerPage])
+  const handleChange = (e) =>{
     const {value} = e.target
-    this.setState({searchValue: value})
+    setSearchValue(value)
   }
-  render(){
-    const {posts, pg, ptsperpg, allPosts, searchValue} = this.state
-    const noMorePost = pg + ptsperpg >=allPosts.length
-
-    const filtered = !!searchValue ? 
+  const filtered = !!searchValue ? 
     allPosts.filter(post => {
       return post.title.toLowerCase().includes(
         searchValue.toLowerCase()
       );
     })
     : posts
-    return(
-      <section className='container' >
+  const result = filtered.length
+  const noMorePost = page + postsPerPage >=allPosts.length
+  return (
+    <section className='container' >
         <div className="search-container">
           {!!searchValue && (
+            <>
             <h1>Search value: {searchValue}</h1>
+            <p>Encontramos {result} respostas</p>
+            </>
           )}
-          <InputText handleChange={this.handleChange} searchValue={searchValue} />
+          <InputText handleChange={handleChange} searchValue={searchValue} />
         </div>
 
         {filtered.length > 0 && (
@@ -76,11 +64,12 @@ export default class Home extends Component{
 
         {!searchValue && (
         <div className="button-container">
-          <Button disabled={noMorePost} onclick={this.loadMorePost} />
+          <Button disabled={noMorePost} onclick={loadMorePost} />
         
         </div>
         )}
       </section>
-    )
-  }
+  )
 }
+export default Home
+
